@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Lab1.Helpers;
+using Lab1.Model.FakeRepository.Abstract;
 
 namespace Lab1.Model
 {
@@ -27,46 +28,69 @@ namespace Lab1.Model
         /// Och -1 som är det tillståndet som InputParser går in i när programmet skall avslutas
         /// Ifall nya tillstånd implementeras skulle de kunna vara 2, 3, 4, etc.
         /// </summary>
-        private int ParserState { get; set; }
+///        private en ParserState { get; set; }
 
         /// <summary>
         /// Sätter ParserState till Default
         /// </summary>
-        public void SetDefaultParserState()
+        /// 
+        private State ParserState;
+
+        private enum State
         {
-            ParserState = 1;
+            Exit,
+            Default
+        }
+        /// <summary>
+        /// Initierar log över inskrivna kommandon
+        /// </summary>
+        private Logger LogList = new Logger();
+
+        private Model.FakeRepository.Abstract.IRepository Repo;
+
+        public InputParser(Model.FakeRepository.Abstract.IRepository Repo)
+        {
+            this.Repo = Repo;
+            ParserState = State.Default;
         }
 
         /// <summary>
-        /// Returnerar en int som motsvarar Default State
+        /// Skapar en lista av objekt från klassen User
         /// </summary>
-        private int DefaultParserState
+        /// <param name="Users"></param>
+        private string ListofUsers(List<User> Users, int ListLimit)
+        {
+            var userList = new List<string>();
+            foreach (User user in Users.Take(ListLimit).ToArray())
+            {
+                userList.Add(user.ToString());
+            }
+            return string.Join("\n", userList);
+        }
+
+        private State DefaultParserState
         {
             get
             {
-                return 1;
+                return State.Default;
             }
         }
 
         /// <summary>
         /// Sätter ParserState till Exit
         /// </summary>
-        private void SetExitParserState()
+       private void SetExitParserState()
         {
-            ParserState = -1;
+            ParserState = State.Exit;
         }
 
-        /// <summary>
-        /// Returnerar en int som motsvarar Exit State
-        /// </summary>
-        private int ExitParserState
-        {
-            get
-            {
-                return -1;
-            }
-        }
-
+       private State ExitParserState
+       {
+           get
+           {
+               return State.Exit;
+           }
+       }
         /// <summary>
         /// Returnerar true om ParserState är Exit (eller rättare sagt -1)
         /// </summary>
@@ -83,8 +107,11 @@ namespace Lab1.Model
         /// </summary>
         /// <param name="input">Input sträng som kommer från användaren.</param>
         /// <returns></returns>
+
         public string ParseInput(string input)
         {
+            
+            LogList.Log(input);
             if (ParserState == DefaultParserState)
             {
                 return ParseDefaultStateInput(input);
@@ -96,9 +123,19 @@ namespace Lab1.Model
             }
             else
             {
-                SetDefaultParserState();
                 return OutputHelper.ErrorLostState;
             }
+        }         
+
+        public string DictionaryInterfaces()
+        {
+            Console.WriteLine("\r\nInterfaces implemented by Dictionary:\r\n");
+  
+            foreach (Type tinterface in typeof(Dictionary<int, string>).GetInterfaces())
+            {
+              Console.WriteLine(tinterface.ToString());
+            }
+            return ToString();
         }
 
         /// <summary>
@@ -108,6 +145,7 @@ namespace Lab1.Model
         /// <returns></returns>
         private string ParseDefaultStateInput(string input)
         {
+            input = input.ToLower();
             string result;
             switch (input)
             {
@@ -115,8 +153,31 @@ namespace Lab1.Model
                 case "help":
                     result = OutputHelper.RootCommandList;
                     break;
+                case "list":
+                    result = ListofUsers(Repo.GetUsers(), 10);
+                    break;
+                case "sortedlist":
+                    result = ListofUsers(Repo.GetUsers().OrderBy(u => u.FullName).ToList(), 10);
+                    break;
+                case "listadmin":
+                    result = ListofUsers(Repo.GetUsers().Where(u => u.Type == User.UserType.Admin).ToList(), 10);
+                    break;
+                case "log":
+                    result = LogList.ToString();
+                    break;
+                case "interface":
+                    result = "To make a class implement an interface you need to add the name of the interface after the name of the class using : as separator";
+                    result += "\n\tExample below";
+                    result += "\n\t    class NameofClass : NameofInterface";
+                    result += "\n\t    {";
+                    result += "\n\t        related code";
+                    result += "\n\t     }";
+                    break;
+                case "dictionary":
+                    result = DictionaryInterfaces();
+                   break;
                 case "exit":
-                    SetExitParserState(); // Lägg märke till att vi utför en Action här.
+                    ParserState = State.Exit;
                     result = OutputHelper.ExitMessage("Bye!"); // Det går bra att skicka parametrar
                     break;
                 default:
